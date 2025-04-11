@@ -12,3 +12,5 @@ Basic understanding of Go, Go properly installed and `go run create-admin-secret
 To create the secret `go run create-license-secret.go` or `go build create-license-secret.go`.
 Example with the binary built: `./create-license-secret --namespace my-namespace --name my-secret --file license.jwt`create-license-secret.go`
 
+Successful creation: `✅ Secret manifest written to demo-license.yaml`
+
