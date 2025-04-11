@@ -10,7 +10,7 @@ Basic understanding of Go, Go properly installed and `go run create-admin-secret
 `create-license-secret.go` will create a secret containing a license.jwt file. The user will provide the namespace, secret name, and path to the license file as command-line arguments. The license file is base64 encoded, validation takes place for inputs, the secret is saved to a yaml manifest names <secret-name>.yaml
 
 To create the secret `go run create-license-secret.go` or `go build create-license-secret.go`.
-Example with the binary built: `./create-license-secret --namespace my-namespace --name my-secret --file license.jwt`create-license-secret.go`
+Example with the binary built: `./create-license-secret -file license.jwt -name demo-license -namespace demo`create-license-secret.go`
 
 Successful creation: `✅ Secret manifest written to demo-license.yaml`
 
