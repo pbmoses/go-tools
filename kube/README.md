@@ -4,4 +4,4 @@ This Go based too will prompt the user for a namespace, secret name, adminUser, 
 
 ## Requirements
 
-Basic understanding of Go, Go properly installed and `go run create_secret.go` or `go build create_secret.go`
+Basic understanding of Go, Go properly installed and `go run create-admin-secret.go` or `go build create-admin-secret.go`
