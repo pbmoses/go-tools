@@ -1,3 +1,5 @@
+# DO NOT PUT GENERATED SECRETS IN GIT!!! External Secrets Operator + Vault or similar setup. DO NOT STORE SECRETS IN GIT
+
 ## Requirements
 
 Basic understanding of Go, Go properly installed.
