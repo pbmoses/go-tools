@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -10,158 +9,160 @@ import (
 	"strings"
 )
 
+// Config struct holds the secret data
 type Config struct {
 	AdminUser            string `json:"adminUser"`
 	AdminPassword        string `json:"adminPassword"`
 	AWSAccessKey         string `json:"AWS_ACCESS_KEY"`
 	AWSSecretAccessKey   string `json:"AWS_SECRET_ACCESS_KEY"`
+	LicenseFilePath      string `json:"licenseFile"`
 }
 
-func prompt(label string) string {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("%s: ", label)
-	value, _ := reader.ReadString('\n')
-	return strings.TrimSpace(value)
+func printHelp() {
+	fmt.Println(`Usage: go run main.go [--config=config.json] [flags]
+
+Available flags to override config.json:
+  --adminUser string
+  --adminPassword string
+  --AWS_ACCESS_KEY string
+  --AWS_SECRET_ACCESS_KEY string
+  --licenseFile string
+
+Example config.json:
+{
+  "adminUser": "admin",
+  "adminPassword": "s3cr3t",
+  "AWS_ACCESS_KEY": "AKIA...",
+  "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  "licenseFile": "license.jwt"
+}`)
+	os.Exit(0)
 }
 
-func encode(data string) string {
-	return base64.StdEncoding.EncodeToString([]byte(data))
-}
-
-func readConfig(filename string) (*Config, error) {
-	file, err := os.Open(filename)
+func loadConfig(path string) (*Config, error) {
+	var config Config
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
-
-	config := &Config{}
-	err = json.NewDecoder(file).Decode(config)
-	return config, err
+	err = json.Unmarshal(data, &config)
+	return &config, err
 }
 
-func readLicenseFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
+func base64Encode(value string) string {
+	return base64.StdEncoding.EncodeToString([]byte(value))
+}
+
+func createSecret(name string, data map[string]string) string {
+	var b strings.Builder
+	b.WriteString("apiVersion: v1\nkind: Secret\n")
+	b.WriteString(fmt.Sprintf("metadata:\n  name: %s\n", name))
+	b.WriteString("type: Opaque\n")
+	b.WriteString("data:\n")
+	for k, v := range data {
+		b.WriteString(fmt.Sprintf("  %s: %s\n", k, base64Encode(v)))
+	}
+	return b.String()
+}
+
+func writeFile(filename, content string) error {
+	err := os.WriteFile(filename, []byte(content), 0644)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to write file %s: %w", filename, err)
 	}
-	return string(data), nil
-}
-
-func createSecretYAML(name string, data map[string]string) string {
-	yaml := fmt.Sprintf("apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\ntype: Opaque\ndata:\n", name)
-	for key, val := range data {
-		yaml += fmt.Sprintf("  %s: %s\n", key, encode(val))
-	}
-	return yaml
-}
-
-func writeToFile(filename, content string) error {
-	return os.WriteFile(filename, []byte(content), 0644)
+	fmt.Printf("Secret written to: %s\n", filename)
+	return nil
 }
 
 func main() {
 	// Flags
-	adminUserFlag := flag.String("adminUser", "", "Admin username")
-	adminPassFlag := flag.String("adminPassword", "", "Admin password")
-	licenseFileFlag := flag.String("licensefile", "", "Path to license.jwt file")
-	awsKeyFlag := flag.String("awsKey", "", "AWS Access Key")
-	awsSecretFlag := flag.String("awsSecret", "", "AWS Secret Access Key")
-	configPath := "config.json"
+	configPath := flag.String("config", "", "Path to config file")
+	adminUser := flag.String("adminUser", "", "Admin username")
+	adminPassword := flag.String("adminPassword", "", "Admin password")
+	awsKey := flag.String("AWS_ACCESS_KEY", "", "AWS Access Key")
+	awsSecret := flag.String("AWS_SECRET_ACCESS_KEY", "", "AWS Secret Access Key")
+	licenseFile := flag.String("licenseFile", "", "Path to license.jwt file")
+
 	flag.Parse()
 
-	var config *Config
-	var err error
+	// Show help if no flags or --help is provided
+	if len(os.Args) == 1 || contains(os.Args, "--help") {
+		printHelp()
+	}
 
-	// Load config.json if present
-	if _, err := os.Stat(configPath); err == nil {
-		config, err = readConfig(configPath)
+	var cfg Config
+	if *configPath != "" {
+		loadedCfg, err := loadConfig(*configPath)
 		if err != nil {
-			fmt.Println("Error reading config.json:", err)
-			return
+			fmt.Fprintf(os.Stderr, "Error reading config: %v\n", err)
+			os.Exit(1)
 		}
-	} else {
-		config = &Config{}
+		cfg = *loadedCfg
 	}
 
-	// Admin credentials
-	adminUser := *adminUserFlag
-	if adminUser == "" {
-		if config.AdminUser != "" {
-			adminUser = config.AdminUser
-		} else {
-			adminUser = prompt("Enter adminUser")
-		}
+	// Override with flags if provided
+	if *adminUser != "" {
+		cfg.AdminUser = *adminUser
+	}
+	if *adminPassword != "" {
+		cfg.AdminPassword = *adminPassword
+	}
+	if *awsKey != "" {
+		cfg.AWSAccessKey = *awsKey
+	}
+	if *awsSecret != "" {
+		cfg.AWSSecretAccessKey = *awsSecret
+	}
+	if *licenseFile != "" {
+		cfg.LicenseFilePath = *licenseFile
 	}
 
-	adminPass := *adminPassFlag
-	if adminPass == "" {
-		if config.AdminPassword != "" {
-			adminPass = config.AdminPassword
-		} else {
-			adminPass = prompt("Enter adminPassword")
-		}
-	}
-
-	// AWS credentials
-	awsKey := *awsKeyFlag
-	if awsKey == "" {
-		if config.AWSAccessKey != "" {
-			awsKey = config.AWSAccessKey
-		} else {
-			awsKey = prompt("Enter AWS_ACCESS_KEY")
-		}
-	}
-
-	awsSecret := *awsSecretFlag
-	if awsSecret == "" {
-		if config.AWSSecretAccessKey != "" {
-			awsSecret = config.AWSSecretAccessKey
-		} else {
-			awsSecret = prompt("Enter AWS_SECRET_ACCESS_KEY")
-		}
-	}
-
-	// License file
 	licenseData := ""
-	if *licenseFileFlag != "" {
-		licenseData, err = readLicenseFile(*licenseFileFlag)
+	if cfg.LicenseFilePath != "" {
+		content, err := os.ReadFile(cfg.LicenseFilePath)
 		if err != nil {
-			fmt.Println("Error reading license file:", err)
-			return
+			fmt.Fprintf(os.Stderr, "Failed to read license file: %v\n", err)
+			os.Exit(1)
 		}
-	} else {
-		licenseData = prompt("Enter contents of license.jwt")
+		licenseData = string(content)
 	}
 
-	// Create secrets
-	metricsAdminSecret := createSecretYAML("metrics-admin-secret", map[string]string{
-		"adminUser":     adminUser,
-		"adminPassword": adminPass,
+	// Generate Secrets
+	adminSecret := createSecret("admin-secret", map[string]string{
+		"adminUser":     cfg.AdminUser,
+		"adminPassword": cfg.AdminPassword,
 	})
 
-	createLicenseSecret := createSecretYAML("create-license-secret", map[string]string{
+	bucketSecret := createSecret("metrics-bucket-secret", map[string]string{
+		"AWS_ACCESS_KEY":       cfg.AWSAccessKey,
+		"AWS_SECRET_ACCESS_KEY": cfg.AWSSecretAccessKey,
+	})
+
+	licenseSecret := createSecret("metrics-license-secret", map[string]string{
 		"license.jwt": licenseData,
 	})
 
-	metricsBucketSecret := createSecretYAML("metrics-bucket-secret", map[string]string{
-		"AWS_ACCESS_KEY":        awsKey,
-		"AWS_SECRET_ACCESS_KEY": awsSecret,
-	})
+	// Write secrets to files
+	if err := writeFile("admin-secret.yaml", adminSecret); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	if err := writeFile("metrics-bucket-secret.yaml", bucketSecret); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	if err := writeFile("metrics-license-secret.yaml", licenseSecret); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
 
-	// Write to files
-	if err := writeToFile("metrics-admin-secret.yaml", metricsAdminSecret); err != nil {
-		fmt.Println("Failed to write metrics-admin-secret.yaml:", err)
+// Helper function to check if a flag is passed
+func contains(slice []string, val string) bool {
+	for _, s := range slice {
+		if s == val {
+			return true
+		}
 	}
-	if err := writeToFile("metrics-license-secret.yaml", createLicenseSecret); err != nil {
-		fmt.Println("Failed to write create-license-secret.yaml:", err)
-	}
-	if err := writeToFile("metrics-bucket-secret.yaml", metricsBucketSecret); err != nil {
-		fmt.Println("Failed to write metrics-bucket-secret.yaml:", err)
-	}
-
-	fmt.Println("✅ Kubernetes Secret manifests written to:")
-	fmt.Println("  - metrics-admin-secret.yaml")
-	fmt.Println("  - create-license-secret.yaml")
-	fmt.Println("  - metrics-bucket-secret.yaml")
+	return false
 }
