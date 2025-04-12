@@ -2,6 +2,10 @@
 
 Basic understanding of Go, Go properly installed.
 
+## Metrics secrets generator
+Thie Go tool will output 3 secrets; one admin, one for S3 storage and one for the license.jwt that is provided. COmmand line arguments can be used or config.json. 
+` go build metrics-secrets-generator.go` or `go run  go build metrics-secrets-generator.go`
+
 ## Admin Secret Generator
 
 This Go based too will prompt the user for a namespace, secret name, adminUser, adminPassword, Base64-encode the data and create a local file saved as the secret name. 
