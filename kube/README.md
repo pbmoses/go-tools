@@ -1,5 +1,5 @@
 # DO NOT STORE GENERATED SECRETS IN GIT!!! 
-# Utilize the external Secrets Operator + Vault or similar. DO NOT STORE SECRETS IN GIT
+## Utilize the external Secrets Operator + Vault or similar. Kubernetes secrets in cluster/etcd are not encrypted! Encrypt at rest.  
 
 ## Requirements
 
