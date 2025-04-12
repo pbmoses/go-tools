@@ -1,4 +1,4 @@
-# DO NOT PUT GENERATED SECRETS IN GIT!!! 
+# DO NOT STORE GENERATED SECRETS IN GIT!!! 
 # Utilize the external Secrets Operator + Vault or similar. DO NOT STORE SECRETS IN GIT
 
 ## Requirements
