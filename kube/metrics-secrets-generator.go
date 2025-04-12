@@ -19,7 +19,7 @@ type Config struct {
 }
 
 func printHelp() {
-	fmt.Println(`Usage: go run main.go [--config=config.json] [flags]
+	fmt.Println(`Usage: go run metrics-secrets-generator.go [--config=config.json] [flags]
 
 Available flags to override config.json:
   --adminUser string
