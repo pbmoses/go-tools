@@ -175,7 +175,7 @@ Flags:
 
 	// Create Helm YAML structure
 	var values Values
-	values.Global.ExtraEnvFrom = []EnvFrom{{SecretRef: SecretRef{Name: "mimir-bucket-secret"}}}
+	values.Global.ExtraEnvFrom = []EnvFrom{{SecretRef: SecretRef{Name: "metrics-bucket-secret"}}}
 	values.Global.PodAnnotations = map[string]string{"bucketSecretVersion": "0"}
 	values.Minio.Enabled = false
 
